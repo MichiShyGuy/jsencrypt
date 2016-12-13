@@ -308,7 +308,28 @@ RSAKey.prototype.parsePropertiesFrom = function (obj) {
     this.coeff = obj.coeff;
   }
 };
-
+/**
+ *
+ */
+RSAKey.prototype.sign = function (text, digestMethod) {
+        var digest = digestMethod(text);
+        var m = pkcs1pad2(digest, (this.n.bitLength()+7)>>3);
+        if (m == null) return null;
+        var c = m.modPow(this.d, this.n);
+        if (c == null) return null;
+        var h = c.toString(16);
+        if ((h.length & 1) == 0) return h; else return "0" + h;
+    };
+/**
+ *
+ */
+RSAKey.prototype.verify = function (text, signature, digestMethod) {
+        var c = parseBigInt(signature, 16);
+        var m = c.modPowInt(this.e, this.n);
+        if (m == null) return null;
+        var digest = pkcs1unpad2(m, (this.n.bitLength()+7)>>3);
+        return digest == digestMethod(text);
+};
 /**
  * Create a new JSEncryptRSAKey that extends Tom Wu's RSA key object.
  * This object is just a decorator for parsing the key parameter
