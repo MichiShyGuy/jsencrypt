@@ -1,4 +1,4 @@
-/*! JSEncrypt v2.3.1 | https://npmcdn.com/jsencrypt@2.3.1/LICENSE.txt */
+/*! JSEncrypt v2.3.2 | https://npmcdn.com/jsencrypt@2.3.2/LICENSE.txt */
 (function (root, factory) {
   if (typeof define === 'function' && define.amd) {
     // AMD
@@ -4209,7 +4209,6 @@ JSEncryptRSAKey.prototype = new RSAKey();
 // Reset the contructor.
 JSEncryptRSAKey.prototype.constructor = JSEncryptRSAKey;
 
-
 /**
  *
  * @param {Object} [options = {}] - An object to customize JSEncrypt behaviour
@@ -4395,6 +4394,6 @@ JSEncrypt.prototype.verify = function (text, signature, digestMethod) {
         return false;
     }
 };
-  JSEncrypt.version = '2.3.1';
+  JSEncrypt.version = '2.3.2';
   exports.JSEncrypt = JSEncrypt;
 });

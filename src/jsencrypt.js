@@ -362,7 +362,6 @@ JSEncryptRSAKey.prototype = new RSAKey();
 // Reset the contructor.
 JSEncryptRSAKey.prototype.constructor = JSEncryptRSAKey;
 
-
 /**
  *
  * @param {Object} [options = {}] - An object to customize JSEncrypt behaviour
