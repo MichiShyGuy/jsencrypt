@@ -3851,10 +3851,10 @@ window.ASN1 = ASN1;
  * @public
  */
 ASN1.prototype.getHexStringValue = function () {
-  var hexString = this.toHexString();
-  var offset = this.header * 2;
-  var length = this.length * 2;
-  return hexString.substr(offset, length);
+    var hexString = this.toHexString();
+    var offset = this.header * 2;
+    var length = this.length * 2;
+    return hexString.substr(offset, length);
 };
 
 /**
@@ -3886,65 +3886,65 @@ ASN1.prototype.getHexStringValue = function () {
  * @private
  */
 RSAKey.prototype.parseKey = function (pem) {
-  try {
-    var modulus = 0;
-    var public_exponent = 0;
-    var reHex = /^\s*(?:[0-9A-Fa-f][0-9A-Fa-f]\s*)+$/;
-    var der = reHex.test(pem) ? Hex.decode(pem) : Base64.unarmor(pem);
-    var asn1 = ASN1.decode(der);
+    try {
+        var modulus = 0;
+        var public_exponent = 0;
+        var reHex = /^\s*(?:[0-9A-Fa-f][0-9A-Fa-f]\s*)+$/;
+        var der = reHex.test(pem) ? Hex.decode(pem) : Base64.unarmor(pem);
+        var asn1 = ASN1.decode(der);
 
-    //Fixes a bug with OpenSSL 1.0+ private keys
-    if(asn1.sub.length === 3){
-        asn1 = asn1.sub[2].sub[0];
+        //Fixes a bug with OpenSSL 1.0+ private keys
+        if (asn1.sub.length === 3) {
+            asn1 = asn1.sub[2].sub[0];
+        }
+        if (asn1.sub.length === 9) {
+
+            // Parse the private key.
+            modulus = asn1.sub[1].getHexStringValue(); //bigint
+            this.n = parseBigInt(modulus, 16);
+
+            public_exponent = asn1.sub[2].getHexStringValue(); //int
+            this.e = parseInt(public_exponent, 16);
+
+            var private_exponent = asn1.sub[3].getHexStringValue(); //bigint
+            this.d = parseBigInt(private_exponent, 16);
+
+            var prime1 = asn1.sub[4].getHexStringValue(); //bigint
+            this.p = parseBigInt(prime1, 16);
+
+            var prime2 = asn1.sub[5].getHexStringValue(); //bigint
+            this.q = parseBigInt(prime2, 16);
+
+            var exponent1 = asn1.sub[6].getHexStringValue(); //bigint
+            this.dmp1 = parseBigInt(exponent1, 16);
+
+            var exponent2 = asn1.sub[7].getHexStringValue(); //bigint
+            this.dmq1 = parseBigInt(exponent2, 16);
+
+            var coefficient = asn1.sub[8].getHexStringValue(); //bigint
+            this.coeff = parseBigInt(coefficient, 16);
+
+        }
+        else if (asn1.sub.length === 2) {
+
+            // Parse the public key.
+            var bit_string = asn1.sub[1];
+            var sequence = bit_string.sub[0];
+
+            modulus = sequence.sub[0].getHexStringValue();
+            this.n = parseBigInt(modulus, 16);
+            public_exponent = sequence.sub[1].getHexStringValue();
+            this.e = parseInt(public_exponent, 16);
+
+        }
+        else {
+            return false;
+        }
+        return true;
     }
-    if (asn1.sub.length === 9) {
-
-      // Parse the private key.
-      modulus = asn1.sub[1].getHexStringValue(); //bigint
-      this.n = parseBigInt(modulus, 16);
-
-      public_exponent = asn1.sub[2].getHexStringValue(); //int
-      this.e = parseInt(public_exponent, 16);
-
-      var private_exponent = asn1.sub[3].getHexStringValue(); //bigint
-      this.d = parseBigInt(private_exponent, 16);
-
-      var prime1 = asn1.sub[4].getHexStringValue(); //bigint
-      this.p = parseBigInt(prime1, 16);
-
-      var prime2 = asn1.sub[5].getHexStringValue(); //bigint
-      this.q = parseBigInt(prime2, 16);
-
-      var exponent1 = asn1.sub[6].getHexStringValue(); //bigint
-      this.dmp1 = parseBigInt(exponent1, 16);
-
-      var exponent2 = asn1.sub[7].getHexStringValue(); //bigint
-      this.dmq1 = parseBigInt(exponent2, 16);
-
-      var coefficient = asn1.sub[8].getHexStringValue(); //bigint
-      this.coeff = parseBigInt(coefficient, 16);
-
+    catch (ex) {
+        return false;
     }
-    else if (asn1.sub.length === 2) {
-
-      // Parse the public key.
-      var bit_string = asn1.sub[1];
-      var sequence = bit_string.sub[0];
-
-      modulus = sequence.sub[0].getHexStringValue();
-      this.n = parseBigInt(modulus, 16);
-      public_exponent = sequence.sub[1].getHexStringValue();
-      this.e = parseInt(public_exponent, 16);
-
-    }
-    else {
-      return false;
-    }
-    return true;
-  }
-  catch (ex) {
-    return false;
-  }
 };
 
 /**
@@ -3966,21 +3966,21 @@ RSAKey.prototype.parseKey = function (pem) {
  * @private
  */
 RSAKey.prototype.getPrivateBaseKey = function () {
-  var options = {
-    'array': [
-      new KJUR.asn1.DERInteger({'int': 0}),
-      new KJUR.asn1.DERInteger({'bigint': this.n}),
-      new KJUR.asn1.DERInteger({'int': this.e}),
-      new KJUR.asn1.DERInteger({'bigint': this.d}),
-      new KJUR.asn1.DERInteger({'bigint': this.p}),
-      new KJUR.asn1.DERInteger({'bigint': this.q}),
-      new KJUR.asn1.DERInteger({'bigint': this.dmp1}),
-      new KJUR.asn1.DERInteger({'bigint': this.dmq1}),
-      new KJUR.asn1.DERInteger({'bigint': this.coeff})
-    ]
-  };
-  var seq = new KJUR.asn1.DERSequence(options);
-  return seq.getEncodedHex();
+    var options = {
+        'array': [
+            new KJUR.asn1.DERInteger({'int': 0}),
+            new KJUR.asn1.DERInteger({'bigint': this.n}),
+            new KJUR.asn1.DERInteger({'int': this.e}),
+            new KJUR.asn1.DERInteger({'bigint': this.d}),
+            new KJUR.asn1.DERInteger({'bigint': this.p}),
+            new KJUR.asn1.DERInteger({'bigint': this.q}),
+            new KJUR.asn1.DERInteger({'bigint': this.dmp1}),
+            new KJUR.asn1.DERInteger({'bigint': this.dmq1}),
+            new KJUR.asn1.DERInteger({'bigint': this.coeff})
+        ]
+    };
+    var seq = new KJUR.asn1.DERSequence(options);
+    return seq.getEncodedHex();
 };
 
 /**
@@ -3989,7 +3989,7 @@ RSAKey.prototype.getPrivateBaseKey = function () {
  * @public
  */
 RSAKey.prototype.getPrivateBaseKeyB64 = function () {
-  return hex2b64(this.getPrivateBaseKey());
+    return hex2b64(this.getPrivateBaseKey());
 };
 
 /**
@@ -4013,35 +4013,35 @@ RSAKey.prototype.getPrivateBaseKeyB64 = function () {
  * @private
  */
 RSAKey.prototype.getPublicBaseKey = function () {
-  var options = {
-    'array': [
-      new KJUR.asn1.DERObjectIdentifier({'oid': '1.2.840.113549.1.1.1'}), //RSA Encryption pkcs #1 oid
-      new KJUR.asn1.DERNull()
-    ]
-  };
-  var first_sequence = new KJUR.asn1.DERSequence(options);
+    var options = {
+        'array': [
+            new KJUR.asn1.DERObjectIdentifier({'oid': '1.2.840.113549.1.1.1'}), //RSA Encryption pkcs #1 oid
+            new KJUR.asn1.DERNull()
+        ]
+    };
+    var first_sequence = new KJUR.asn1.DERSequence(options);
 
-  options = {
-    'array': [
-      new KJUR.asn1.DERInteger({'bigint': this.n}),
-      new KJUR.asn1.DERInteger({'int': this.e})
-    ]
-  };
-  var second_sequence = new KJUR.asn1.DERSequence(options);
+    options = {
+        'array': [
+            new KJUR.asn1.DERInteger({'bigint': this.n}),
+            new KJUR.asn1.DERInteger({'int': this.e})
+        ]
+    };
+    var second_sequence = new KJUR.asn1.DERSequence(options);
 
-  options = {
-    'hex': '00' + second_sequence.getEncodedHex()
-  };
-  var bit_string = new KJUR.asn1.DERBitString(options);
+    options = {
+        'hex': '00' + second_sequence.getEncodedHex()
+    };
+    var bit_string = new KJUR.asn1.DERBitString(options);
 
-  options = {
-    'array': [
-      first_sequence,
-      bit_string
-    ]
-  };
-  var seq = new KJUR.asn1.DERSequence(options);
-  return seq.getEncodedHex();
+    options = {
+        'array': [
+            first_sequence,
+            bit_string
+        ]
+    };
+    var seq = new KJUR.asn1.DERSequence(options);
+    return seq.getEncodedHex();
 };
 
 /**
@@ -4050,7 +4050,7 @@ RSAKey.prototype.getPublicBaseKey = function () {
  * @public
  */
 RSAKey.prototype.getPublicBaseKeyB64 = function () {
-  return hex2b64(this.getPublicBaseKey());
+    return hex2b64(this.getPublicBaseKey());
 };
 
 /**
@@ -4062,12 +4062,12 @@ RSAKey.prototype.getPublicBaseKeyB64 = function () {
  * @private
  */
 RSAKey.prototype.wordwrap = function (str, width) {
-  width = width || 64;
-  if (!str) {
-    return str;
-  }
-  var regex = '(.{1,' + width + '})( +|$\n?)|(.{1,' + width + '})';
-  return str.match(RegExp(regex, 'g')).join('\n');
+    width = width || 64;
+    if (!str) {
+        return str;
+    }
+    var regex = '(.{1,' + width + '})( +|$\n?)|(.{1,' + width + '})';
+    return str.match(RegExp(regex, 'g')).join('\n');
 };
 
 /**
@@ -4076,10 +4076,10 @@ RSAKey.prototype.wordwrap = function (str, width) {
  * @public
  */
 RSAKey.prototype.getPrivateKey = function () {
-  var key = "-----BEGIN RSA PRIVATE KEY-----\n";
-  key += this.wordwrap(this.getPrivateBaseKeyB64()) + "\n";
-  key += "-----END RSA PRIVATE KEY-----";
-  return key;
+    var key = "-----BEGIN RSA PRIVATE KEY-----\n";
+    key += this.wordwrap(this.getPrivateBaseKeyB64()) + "\n";
+    key += "-----END RSA PRIVATE KEY-----";
+    return key;
 };
 
 /**
@@ -4088,10 +4088,10 @@ RSAKey.prototype.getPrivateKey = function () {
  * @public
  */
 RSAKey.prototype.getPublicKey = function () {
-  var key = "-----BEGIN PUBLIC KEY-----\n";
-  key += this.wordwrap(this.getPublicBaseKeyB64()) + "\n";
-  key += "-----END PUBLIC KEY-----";
-  return key;
+    var key = "-----BEGIN PUBLIC KEY-----\n";
+    key += this.wordwrap(this.getPublicBaseKeyB64()) + "\n";
+    key += "-----END PUBLIC KEY-----";
+    return key;
 };
 
 /**
@@ -4106,11 +4106,11 @@ RSAKey.prototype.getPublicKey = function () {
  * @private
  */
 RSAKey.prototype.hasPublicKeyProperty = function (obj) {
-  obj = obj || {};
-  return (
-    obj.hasOwnProperty('n') &&
-    obj.hasOwnProperty('e')
-  );
+    obj = obj || {};
+    return (
+        obj.hasOwnProperty('n') &&
+        obj.hasOwnProperty('e')
+    );
 };
 
 /**
@@ -4123,17 +4123,17 @@ RSAKey.prototype.hasPublicKeyProperty = function (obj) {
  * @private
  */
 RSAKey.prototype.hasPrivateKeyProperty = function (obj) {
-  obj = obj || {};
-  return (
-    obj.hasOwnProperty('n') &&
-    obj.hasOwnProperty('e') &&
-    obj.hasOwnProperty('d') &&
-    obj.hasOwnProperty('p') &&
-    obj.hasOwnProperty('q') &&
-    obj.hasOwnProperty('dmp1') &&
-    obj.hasOwnProperty('dmq1') &&
-    obj.hasOwnProperty('coeff')
-  );
+    obj = obj || {};
+    return (
+        obj.hasOwnProperty('n') &&
+        obj.hasOwnProperty('e') &&
+        obj.hasOwnProperty('d') &&
+        obj.hasOwnProperty('p') &&
+        obj.hasOwnProperty('q') &&
+        obj.hasOwnProperty('dmp1') &&
+        obj.hasOwnProperty('dmq1') &&
+        obj.hasOwnProperty('coeff')
+    );
 };
 
 /**
@@ -4143,19 +4143,40 @@ RSAKey.prototype.hasPrivateKeyProperty = function (obj) {
  * @private
  */
 RSAKey.prototype.parsePropertiesFrom = function (obj) {
-  this.n = obj.n;
-  this.e = obj.e;
+    this.n = obj.n;
+    this.e = obj.e;
 
-  if (obj.hasOwnProperty('d')) {
-    this.d = obj.d;
-    this.p = obj.p;
-    this.q = obj.q;
-    this.dmp1 = obj.dmp1;
-    this.dmq1 = obj.dmq1;
-    this.coeff = obj.coeff;
-  }
+    if (obj.hasOwnProperty('d')) {
+        this.d = obj.d;
+        this.p = obj.p;
+        this.q = obj.q;
+        this.dmp1 = obj.dmp1;
+        this.dmq1 = obj.dmq1;
+        this.coeff = obj.coeff;
+    }
 };
-
+/**
+ *
+ */
+RSAKey.prototype.sign = function (text, digestMethod) {
+    var digest = digestMethod(text);
+    var m = pkcs1pad2(digest, (this.n.bitLength() + 7) >> 3);
+    if (m == null) return null;
+    var c = m.modPow(this.d, this.n);
+    if (c == null) return null;
+    var h = c.toString(16);
+    if ((h.length & 1) == 0) return h; else return "0" + h;
+};
+/**
+ *
+ */
+RSAKey.prototype.verify = function (text, signature, digestMethod) {
+    var c = parseBigInt(signature, 16);
+    var m = c.modPowInt(this.e, this.n);
+    if (m == null) return null;
+    var digest = pkcs1unpad2(m, (this.n.bitLength() + 7) >> 3);
+    return digest == digestMethod(text);
+};
 /**
  * Create a new JSEncryptRSAKey that extends Tom Wu's RSA key object.
  * This object is just a decorator for parsing the key parameter
@@ -4164,22 +4185,22 @@ RSAKey.prototype.parsePropertiesFrom = function (obj) {
  * @constructor
  */
 var JSEncryptRSAKey = function (key) {
-  // Call the super constructor.
-  RSAKey.call(this);
-  // If a key key was provided.
-  if (key) {
-    // If this is a string...
-    if (typeof key === 'string') {
-      this.parseKey(key);
+    // Call the super constructor.
+    RSAKey.call(this);
+    // If a key key was provided.
+    if (key) {
+        // If this is a string...
+        if (typeof key === 'string') {
+            this.parseKey(key);
+        }
+        else if (
+            this.hasPrivateKeyProperty(key) ||
+            this.hasPublicKeyProperty(key)
+        ) {
+            // Set the values for the key.
+            this.parsePropertiesFrom(key);
+        }
     }
-    else if (
-      this.hasPrivateKeyProperty(key) ||
-      this.hasPublicKeyProperty(key)
-    ) {
-      // Set the values for the key.
-      this.parsePropertiesFrom(key);
-    }
-  }
 };
 
 // Derive from RSAKey.
@@ -4199,12 +4220,12 @@ JSEncryptRSAKey.prototype.constructor = JSEncryptRSAKey;
  * @constructor
  */
 var JSEncrypt = function (options) {
-  options = options || {};
-  this.default_key_size = parseInt(options.default_key_size) || 1024;
-  this.default_public_exponent = options.default_public_exponent || '010001'; //65537 default openssl public exponent for rsa key type
-  this.log = options.log || false;
-  // The private and public key.
-  this.key = null;
+    options = options || {};
+    this.default_key_size = parseInt(options.default_key_size) || 1024;
+    this.default_public_exponent = options.default_public_exponent || '010001'; //65537 default openssl public exponent for rsa key type
+    this.log = options.log || false;
+    // The private and public key.
+    this.key = null;
 };
 
 /**
@@ -4215,10 +4236,10 @@ var JSEncrypt = function (options) {
  * @public
  */
 JSEncrypt.prototype.setKey = function (key) {
-  if (this.log && this.key) {
-    console.warn('A key was already set, overriding existing.');
-  }
-  this.key = new JSEncryptRSAKey(key);
+    if (this.log && this.key) {
+        console.warn('A key was already set, overriding existing.');
+    }
+    this.key = new JSEncryptRSAKey(key);
 };
 
 /**
@@ -4227,8 +4248,8 @@ JSEncrypt.prototype.setKey = function (key) {
  * @public
  */
 JSEncrypt.prototype.setPrivateKey = function (privkey) {
-  // Create the key.
-  this.setKey(privkey);
+    // Create the key.
+    this.setKey(privkey);
 };
 
 /**
@@ -4237,8 +4258,8 @@ JSEncrypt.prototype.setPrivateKey = function (privkey) {
  * @public
  */
 JSEncrypt.prototype.setPublicKey = function (pubkey) {
-  // Sets the public key.
-  this.setKey(pubkey);
+    // Sets the public key.
+    this.setKey(pubkey);
 };
 
 /**
@@ -4250,13 +4271,13 @@ JSEncrypt.prototype.setPublicKey = function (pubkey) {
  * @public
  */
 JSEncrypt.prototype.decrypt = function (string) {
-  // Return the decrypted string.
-  try {
-    return this.getKey().decrypt(b64tohex(string));
-  }
-  catch (ex) {
-    return false;
-  }
+    // Return the decrypted string.
+    try {
+        return this.getKey().decrypt(b64tohex(string));
+    }
+    catch (ex) {
+        return false;
+    }
 };
 
 /**
@@ -4268,13 +4289,13 @@ JSEncrypt.prototype.decrypt = function (string) {
  * @public
  */
 JSEncrypt.prototype.encrypt = function (string) {
-  // Return the encrypted string.
-  try {
-    return hex2b64(this.getKey().encrypt(string));
-  }
-  catch (ex) {
-    return false;
-  }
+    // Return the encrypted string.
+    try {
+        return hex2b64(this.getKey().encrypt(string));
+    }
+    catch (ex) {
+        return false;
+    }
 };
 
 /**
@@ -4286,18 +4307,18 @@ JSEncrypt.prototype.encrypt = function (string) {
  * @public
  */
 JSEncrypt.prototype.getKey = function (cb) {
-  // Only create new if it does not exist.
-  if (!this.key) {
-    // Get a new private key.
-    this.key = new JSEncryptRSAKey();
-    if (cb && {}.toString.call(cb) === '[object Function]') {
-      this.key.generateAsync(this.default_key_size, this.default_public_exponent, cb);
-      return;
+    // Only create new if it does not exist.
+    if (!this.key) {
+        // Get a new private key.
+        this.key = new JSEncryptRSAKey();
+        if (cb && {}.toString.call(cb) === '[object Function]') {
+            this.key.generateAsync(this.default_key_size, this.default_public_exponent, cb);
+            return;
+        }
+        // Generate the key.
+        this.key.generate(this.default_key_size, this.default_public_exponent);
     }
-    // Generate the key.
-    this.key.generate(this.default_key_size, this.default_public_exponent);
-  }
-  return this.key;
+    return this.key;
 };
 
 /**
@@ -4307,8 +4328,8 @@ JSEncrypt.prototype.getKey = function (cb) {
  * @public
  */
 JSEncrypt.prototype.getPrivateKey = function () {
-  // Return the private representation of this key.
-  return this.getKey().getPrivateKey();
+    // Return the private representation of this key.
+    return this.getKey().getPrivateKey();
 };
 
 /**
@@ -4318,8 +4339,8 @@ JSEncrypt.prototype.getPrivateKey = function () {
  * @public
  */
 JSEncrypt.prototype.getPrivateKeyB64 = function () {
-  // Return the private representation of this key.
-  return this.getKey().getPrivateBaseKeyB64();
+    // Return the private representation of this key.
+    return this.getKey().getPrivateBaseKeyB64();
 };
 
 
@@ -4330,8 +4351,8 @@ JSEncrypt.prototype.getPrivateKeyB64 = function () {
  * @public
  */
 JSEncrypt.prototype.getPublicKey = function () {
-  // Return the private representation of this key.
-  return this.getKey().getPublicKey();
+    // Return the private representation of this key.
+    return this.getKey().getPublicKey();
 };
 
 /**
@@ -4341,11 +4362,39 @@ JSEncrypt.prototype.getPublicKey = function () {
  * @public
  */
 JSEncrypt.prototype.getPublicKeyB64 = function () {
-  // Return the private representation of this key.
-  return this.getKey().getPublicBaseKeyB64();
+    // Return the private representation of this key.
+    return this.getKey().getPublicBaseKeyB64();
 };
 
-
+/**
+ *
+ * @param text
+ * @param digestMethod
+ * @returns {*}
+ * @public
+ */
+JSEncrypt.prototype.sign = function (text, digestMethod) {
+    try {
+        return this.getKey().sign(text, digestMethod);
+    } catch (ex) {
+        return false;
+    }
+};
+/**
+ *
+ * @param text
+ * @param signature
+ * @param digestMethod
+ * @returns {*}
+ * @public
+ */
+JSEncrypt.prototype.verify = function (text, signature, digestMethod) {
+    try {
+        return this.getKey().verify(text, signature, digestMethod);
+    } catch (ex) {
+        return false;
+    }
+};
   JSEncrypt.version = '2.3.1';
   exports.JSEncrypt = JSEncrypt;
 });
