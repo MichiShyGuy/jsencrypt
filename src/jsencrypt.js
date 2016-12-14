@@ -629,32 +629,33 @@ JSEncrypt.prototype.getPublicKeyB64 = function () {
     // Return the private representation of this key.
     return this.getKey().getPublicBaseKeyB64();
 };
-
 /**
- *
- * @param text
- * @param digestMethod
- * @returns {*}
- * @public
+ * Signs the text using the private key & the supplied hash & pad methods. Returns a hex string of the signature.
+ * @param {string} text - the text to sign
+ * @param {Function} hashMethod - the method to use to hash the text
+ * @param {Function} padMethod - the method to use to pad the hash. must accept hash & length parameters
+ * @returns {string}
  */
-JSEncrypt.prototype.sign = function (text, digestMethod) {
+JSEncrypt.prototype.sign = function (text, hashMethod, padMethod) {
     try {
-        return this.getKey().sign(text, digestMethod);
+        return this.getKey().sign(text, hashMethod, padMethod);
     } catch (ex) {
-        return false;
+        return null;
     }
 };
+
 /**
- *
- * @param text
- * @param signature
- * @param digestMethod
- * @returns {*}
- * @public
+ * Verifies a signature by decrypting the signature and comparing its hash with a newly-computed hash.
+ * @param {string} signature - the signature in hex
+ * @param {string} text - the text to check the signature of
+ * @param {Function} hashMethod - an equivalent function to that which was used when signing
+ * @param {Function} unPadMethod - a function to undo padding of the hash done on signing
+ * @returns {boolean}
  */
-JSEncrypt.prototype.verify = function (text, signature, digestMethod) {
+JSEncrypt.prototype.verify = function (signature, text, hashMethod, unPadMethod) {
+    // Return the decrypted 'digest' of the signature.
     try {
-        return this.getKey().verify(text, signature, digestMethod);
+        return this.getKey().verify(signature, text, hashMethod, unPadMethod);
     } catch (ex) {
         return false;
     }
