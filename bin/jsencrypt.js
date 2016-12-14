@@ -1,4 +1,4 @@
-/*! JSEncrypt v2.3.3 | https://npmcdn.com/jsencrypt@2.3.3/LICENSE.txt */
+/*! JSEncrypt v2.3.4 | https://npmcdn.com/jsencrypt@2.3.4/LICENSE.txt */
 (function (root, factory) {
   if (typeof define === 'function' && define.amd) {
     // AMD
@@ -3856,65 +3856,73 @@ ASN1.prototype.getHexStringValue = function () {
     var length = this.length * 2;
     return hexString.substr(offset, length);
 };
-
-// PKCS#1 (type 1) pad input string s to n bytes, and return a bigint
-function pkcs1pad1(s,n) {
-  if(n < s.length + 11) { // TODO: fix for utf-8
-    console.error("Message too long for RSA");
-    return null;
-  }
-  var ba = new Array();
-  var i = s.length - 1;
-  while(i >= 0 && n > 0) {
-    var c = s.charCodeAt(i--);
-    if(c < 128) { // encode using utf-8
-      ba[--n] = c;
+/**
+ * PKCS#1 (type 1) pad input string s to n bytes, and return a bigint
+ * @param s
+ * @param n
+ * @return {*}
+ */
+function pkcs1pad1(s, n) {
+    if (n < s.length + 11) { // TODO: fix for utf-8
+        console.error("Message too long for RSA");
+        return null;
     }
-    else if((c > 127) && (c < 2048)) {
-      ba[--n] = (c & 63) | 128;
-      ba[--n] = (c >> 6) | 192;
+    var ba = new Array();
+    var i = s.length - 1;
+    while (i >= 0 && n > 0) {
+        var c = s.charCodeAt(i--);
+        if (c < 128) { // encode using utf-8
+            ba[--n] = c;
+        }
+        else if ((c > 127) && (c < 2048)) {
+            ba[--n] = (c & 63) | 128;
+            ba[--n] = (c >> 6) | 192;
+        }
+        else {
+            ba[--n] = (c & 63) | 128;
+            ba[--n] = ((c >> 6) & 63) | 128;
+            ba[--n] = (c >> 12) | 224;
+        }
     }
-    else {
-      ba[--n] = (c & 63) | 128;
-      ba[--n] = ((c >> 6) & 63) | 128;
-      ba[--n] = (c >> 12) | 224;
+    ba[--n] = 0;
+    while (n > 2) {
+        ba[--n] = 0xFF;
     }
-  }
-  ba[--n] = 0;
-  while(n > 2) { 
-    ba[--n] = 0xFF;
-  }
-  ba[--n] = 1;
-  ba[--n] = 0;
-  return new BigInteger(ba);
+    ba[--n] = 1;
+    ba[--n] = 0;
+    return new BigInteger(ba);
 }
-
-// Undo PKCS#1 (type 1) padding and, if valid, return the plaintext
-function pkcs1unpad1(d,n) {
-  var b = d.toByteArray();
-  var i = 0;
-  while(i < b.length && b[i] == 0) ++i;
-  if(b.length-i != n-1 || b[i] != 1)
-    return null;
-  ++i;
-  while(b[i] != 0)
-    if(++i >= b.length) return null;
-  var ret = "";
-  while(++i < b.length) {
-    var c = b[i] & 255;
-    if(c < 128) { // utf-8 decode
-      ret += String.fromCharCode(c);
+/**
+ * Undo PKCS#1 (type 1) padding and, if valid, return the plaintext
+ * @param d
+ * @param n
+ * @return {*}
+ */
+function pkcs1unpad1(d, n) {
+    var b = d.toByteArray();
+    var i = 0;
+    while (i < b.length && b[i] == 0) ++i;
+    if (b.length - i != n - 1 || b[i] != 1)
+        return null;
+    +i;
+    while (b[i] != 0)
+        if (++i >= b.length) return null;
+    var ret = "";
+    while (++i < b.length) {
+        var c = b[i] & 255;
+        if (c < 128) { // utf-8 decode
+            ret += String.fromCharCode(c);
+        }
+        else if ((c > 191) && (c < 224)) {
+            ret += String.fromCharCode(((c & 31) << 6) | (b[i + 1] & 63));
+            ++i;
+        }
+        else {
+            ret += String.fromCharCode(((c & 15) << 12) | ((b[i + 1] & 63) << 6) | (b[i + 2] & 63));
+            i += 2;
+        }
     }
-    else if((c > 191) && (c < 224)) {
-      ret += String.fromCharCode(((c & 31) << 6) | (b[i+1] & 63));
-      ++i;
-    }
-    else {
-      ret += String.fromCharCode(((c & 15) << 12) | ((b[i+1] & 63) << 6) | (b[i+2] & 63));
-      i += 2;
-    }
-  }
-  return ret;
+    return ret;
 }
 
 /**
@@ -4216,26 +4224,70 @@ RSAKey.prototype.parsePropertiesFrom = function (obj) {
     }
 };
 /**
- *
+ * Return the PKCS#1 RSA signature of "text" as an even-length hex string
+ * @param text
+ * @param hashMethod
+ * @param padMethod
+ * @return {*}
  */
-RSAKey.prototype.sign = function (text, digestMethod) {
-    var digest = digestMethod(text);
-    var m = pkcs1pad1(digest, (this.n.bitLength() + 7) >> 3);
-    if (m == null) return null;
-    var c = m.modPow(this.d, this.n);
-    if (c == null) return null;
-    var h = c.toString(16);
-    if ((h.length & 1) == 0) return h; else return "0" + h;
+RSAKey.prototype.sign = function (text, hashMethod, padMethod) {
+    var key_length, hash, digest, m, c, signature, rem;
+    // get key length
+    key_length = (this.n.bitLength() + 7) >> 3;
+    // hash text
+    hash = hashMethod(text);
+    // pad hash w/ the supplied padMethod
+    digest = padMethod(hash, key_length);
+    // parse the resulting hex string as a bigint
+    m = parseBigInt(digest, 16);
+    if (m === null) return null;
+    // do the signing...
+    c = m.modPow(this.d, this.n);
+    if (c === null) return null;
+    signature = c.toString(16);
+    rem = signature.length % 4;
+    // bug in toString will omit leading 0s...
+    if (rem > 0) {
+        var prefix = "";
+        for (var i = rem; i < 4; i++) {
+            prefix = "0" + prefix;
+        }
+        signature = prefix + signature;
+    }
+    return signature;
 };
 /**
- *
+ * Return boolean indicating the match of a signature
+ * @param signature
+ * @param text
+ * @param hashMethod
+ * @param unPadMethod
+ * @return {*}
  */
-RSAKey.prototype.verify = function (text, signature, digestMethod) {
-    var c = parseBigInt(signature, 16);
-    var m = c.modPowInt(this.e, this.n);
+RSAKey.prototype.verify = function (signature, text, hashMethod, unPadMethod) {
+    var c, m, digest, rem, hash, check_hash;
+    // parse hex string as a bigint
+    c = parseBigInt(signature, 16);
+    // do the de-signing
+    m = c.modPowInt(this.e, this.n);
     if (m == null) return null;
-    var digest = pkcs1unpad1(m, (this.n.bitLength() + 7) >> 3);
-    return digest == digestMethod(text);
+    // convert bigint into hex string
+    digest = m.toString(16);
+    // bug in toString will omit leading 0s...
+    rem = digest.length % 4;
+    if (rem > 0) {
+        var prefix = "";
+        for (var i = rem; i < 4; i++) {
+            prefix = "0" + prefix;
+        }
+        digest = prefix + digest;
+    }
+    // un-pad digest to get initial hash
+    hash = unPadMethod(digest);
+    // get a hash of the text to compare
+    check_hash = hashMethod(text);
+    // return result
+    return hash == check_hash;
 };
 /**
  * Create a new JSEncryptRSAKey that extends Tom Wu's RSA key object.
@@ -4455,6 +4507,6 @@ JSEncrypt.prototype.verify = function (text, signature, digestMethod) {
     }
 };
 
-  JSEncrypt.version = '2.3.3';
+  JSEncrypt.version = '2.3.4';
   exports.JSEncrypt = JSEncrypt;
 });
