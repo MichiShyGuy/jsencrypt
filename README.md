@@ -1,17 +1,9 @@
-This fork was modified to be able to use oaep padding and public keys with format 
-```
------BEGIN RSA PUBLIC KEY-----
-xxx...
------END RSA PUBLIC KEY-----
-```
+This Fork combines the work of multiple contributors:
 
-To use oaep padding pass true as a second parameter in the encrypt function, example:
-```
-var encrypted = encrypt.encrypt($('#input').val(), true);
-```
+It's based on the Fork of https://github.com/alfaro28/jsencrypt
+It also includes the logic for signing from https://github.com/biggora/jsencrypt
 
-Thanks to <a href="https://github.com/machinewu/jsencrypt/commit/c7e594368eb52315c8bf5051cdf833e364b894f9">@machinewu</a> and <a href="https://github.com/jeanphix/jsbn/commit/2879cf9d50c582c6e24bcfba395d3189d992c081">@jeanphix</a>
-
+Feel free to refork or remerge as desired. I don't claim any fame, riches or copyrights for the contributions of the orginal commiters. All thanks go to them (check log for full history) 
 
 Original Readme
 ====================
